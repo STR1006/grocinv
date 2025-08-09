@@ -119,10 +119,12 @@ export async function deleteList(list_id: string) {
 }
 
 // Add or get a product by database_id (upsert)
-export async function upsertProduct(product: Omit<Product, 'id'>) {
+export async function upsertProduct(product: Omit<Product, 'id'> | Product) {
+  // Always omit the id field so Supabase can auto-generate a UUID
+  const { id, ...productData } = product as Product & { id?: string };
   const { data, error } = await supabase
     .from('products')
-    .upsert([product], { onConflict: 'database_id' })
+    .upsert([productData], { onConflict: 'database_id' })
     .select()
     .single();
   if (error) throw error;
