@@ -1,3 +1,13 @@
+// Fetch a list and its products by list_code
+export async function getListWithProductsByCode(list_code: string) {
+  const { data, error } = await supabase
+    .from('lists')
+    .select('*, list_products(*, products(*))')
+    .eq('list_code', list_code)
+    .single();
+  if (error) throw error;
+  return data;
+}
 // Upsert a list (insert or update if exists by id or name)
 export async function upsertList(list: Omit<List, 'id'> & { id?: string }) {
   // Use 'id' as the unique identifier if present, otherwise upsert by name (if your schema allows)

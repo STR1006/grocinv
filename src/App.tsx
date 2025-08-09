@@ -16,7 +16,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { Product, addProductAndLinkToList, upsertProduct, upsertList } from './services/supabaseLists';
+import { Product, addProductAndLinkToList, upsertProduct, upsertList, getListWithProductsByCode } from './services/supabaseLists';
 import { supabase } from './services/supabaseLists';
 // import { Product } from "./services/githubDatabase";
 import { useDatabaseSearch } from "./hooks/useDatabaseSearch";
@@ -776,26 +776,36 @@ const [editForm, setEditForm] = useState({
     return list.list_code || "";
   };
 
-  // Decode share code: look up the list by list_code in localStorage
+  // Decode share code: fetch the list and its products from Supabase by list_code
   const decodeShareCode = async (code: string): Promise<RestockList | null> => {
     try {
-      const saved = localStorage.getItem("gulu-lists");
-      if (!saved) return null;
-      const lists = JSON.parse(saved);
-      const found = lists.find((l: any) => l.list_code === code);
-      if (!found) return null;
-      // Convert dates and products
+      const data = await getListWithProductsByCode(code);
+      if (!data) return null;
+      // Map Supabase data to RestockList shape
+      const products = (data.list_products || []).map((lp: any) => {
+        const p = lp.products;
+        return {
+          id: p.id,
+          database_id: p.database_id,
+          name: p.name,
+          quantity: p.quantity,
+          is_completed: p.is_completed,
+          is_out_of_stock: p.is_out_of_stock,
+          image_url: p.image_url,
+          comment: p.comment,
+          category: p.category,
+        };
+      });
       return {
-        ...found,
-        createdAt: new Date(found.createdAt),
-        lastViewedAt: found.lastViewedAt ? new Date(found.lastViewedAt) : undefined,
-        products: (found.products || []).map((p: any) => ({
-          ...p,
-          completedAt: p.completedAt ? new Date(p.completedAt) : undefined,
-        })),
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        createdAt: data.created_at ? new Date(data.created_at) : new Date(),
+        source: data.source,
+        products,
       };
     } catch (error) {
-      console.error("Failed to decode share code:", error);
+      console.error("Failed to decode share code from Supabase:", error);
       return null;
     }
   };
@@ -1333,10 +1343,23 @@ const [editForm, setEditForm] = useState({
             continue;
           }
           for (const product of list.products) {
-            const productId = dbIdToProductId[product.database_id];
+            // Upsert product if not in db
+            let productId = dbIdToProductId[product.database_id];
             if (!productId) {
-              console.warn('No product_id found for database_id', product.database_id, 'skipping product linking.');
-              continue;
+              try {
+                const upserted = await upsertProduct(product);
+                if (upserted && upserted.id) {
+                  productId = upserted.id;
+                  dbIdToProductId[product.database_id] = productId;
+                  console.log('Upserted new product to Supabase:', product, '->', upserted);
+                } else {
+                  console.warn('Failed to upsert product:', product);
+                  continue;
+                }
+              } catch (err) {
+                console.error('Error upserting product to Supabase:', err);
+                continue;
+              }
             }
             const linkKey = `${listId}|${productId}`;
             if (existingLinks.has(linkKey)) {
