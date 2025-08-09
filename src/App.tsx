@@ -244,7 +244,6 @@ const QrScannerModal: React.FC<QrScannerModalProps> = ({
             <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
-
         <div className="space-y-4">
           {error ? (
             <div className="text-center py-8">
@@ -281,12 +280,10 @@ const QrScannerModal: React.FC<QrScannerModalProps> = ({
                   </div>
                 )}
               </div>
-
               <p className="text-center text-gray-600 text-sm">
                 Position the QR code within the camera view to scan
                 automatically.
               </p>
-
               <div className="flex justify-center pt-2">
                 <button
                   onClick={handleClose}
@@ -2155,7 +2152,7 @@ const [editForm, setEditForm] = useState({
         </div>
 
         {/* Lists */}
-        <div className="app-lists space-y-6">
+  <div className="app-lists space-y-6">
           {filteredLists.map((list) => {
             const completedCount = list.products.filter(
               (p) => p.is_completed
@@ -2261,7 +2258,8 @@ const [editForm, setEditForm] = useState({
               </div>
             );
           })}
-        </div>
+
+  </div>
 
         {/* Empty State */}
         {filteredLists.length === 0 && (
@@ -2277,6 +2275,13 @@ const [editForm, setEditForm] = useState({
           </div>
         )}
       </main>
+
+      {/* Version Text Below Last Card (main app only) */}
+      {filteredLists.length > 0 && (
+        <div style={{ textAlign: 'center', margin: '2rem 0 1rem 0', color: '#888', fontWeight: 500, fontSize: '1rem' }}>
+          V 0.0.01
+        </div>
+      )}
 
       {/* New List Form Dialog */}
       {showNewListForm && (
