@@ -1,3 +1,22 @@
+  // ...existing code...
+
+// Footer component (outside App)
+const Footer = () => (
+  <footer style={{
+    width: '100%',
+    textAlign: 'center',
+    padding: '1rem 0',
+    position: 'fixed',
+    left: 0,
+    bottom: 0,
+    background: 'rgba(255,255,255,0.95)',
+    fontSize: '0.9rem',
+    color: '#888',
+    zIndex: 9999
+  }}>
+    version 0.0.1
+  </footer>
+);
 import QrScanner from "qr-scanner";
 import * as QRCode from "qrcode";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -34,176 +53,8 @@ interface BeforeInstallPromptEvent extends Event {
   }>;
   prompt(): Promise<void>;
 }
+// ...existing code...
 
-// PWA Installer Component
-const PWAInstaller: React.FC = () => {
-  const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
-  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
-
-  useEffect(() => {
-    // Check if user is on iOS
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    setIsIOS(iOS);
-
-    // Check if app is already installed (standalone mode)
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone ||
-      document.referrer.includes("android-app://");
-    setIsStandalone(standalone);
-
-    // Check if user has already dismissed the prompt recently
-    const lastDismissed = localStorage.getItem("pwa-install-dismissed");
-    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-
-    if (lastDismissed && parseInt(lastDismissed) > oneDayAgo) {
-      return; // Don't show if dismissed within last 24 hours
-    }
-
-    // Listen for the beforeinstallprompt event
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-
-      // Show our custom install prompt after a short delay
-      setTimeout(() => {
-        if (!standalone) {
-          setShowInstallPrompt(true);
-        }
-      }, 2000); // Show after 2 seconds
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-
-    // For iOS, show prompt if not in standalone mode
-    if (iOS && !standalone) {
-      setTimeout(() => {
-        setShowInstallPrompt(true);
-      }, 2000);
-    }
-
-    return () => {
-      window.removeEventListener(
-        "beforeinstallprompt",
-        handleBeforeInstallPrompt
-      );
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      // For Android/Chrome
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-
-      if (outcome === "accepted") {
-        setDeferredPrompt(null);
-      }
-      setShowInstallPrompt(false);
-    } else if (isIOS) {
-      // For iOS, we can't trigger install programmatically
-      // The prompt will show instructions
-      return;
-    }
-  };
-
-  const handleDismiss = () => {
-    setShowInstallPrompt(false);
-    localStorage.setItem("pwa-install-dismissed", Date.now().toString());
-  };
-
-  if (!showInstallPrompt || isStandalone) {
-    return null;
-  }
-
-  return (
-    <div
-      className="modal-overlay"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          handleDismiss();
-        }
-      }}
-    >
-      <div className="modal-content bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Install Gulu Inventory
-          </h2>
-          <button
-            onClick={handleDismiss}
-            className="close-button p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="text-center">
-          <div className="w-16 h-16 bg-teal-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-xl">G</span>
-          </div>
-
-          <p className="text-gray-600 mb-6">
-            Get quick access to your grocery lists. Install our app for a better
-            experience!
-          </p>
-
-          {isIOS ? (
-            <div className="text-left mb-6">
-              <p className="text-sm text-gray-700 mb-3">
-                To install this app on your iPhone:
-              </p>
-              <ol className="text-sm text-gray-600 space-y-2">
-                <li className="flex items-start">
-                  <span className="font-medium mr-2">1.</span>
-                  <span>
-                    Tap the <strong>Share</strong> button at the bottom of
-                    Safari
-                  </span>
-                </li>
-                <li className="flex items-start">
-                  <span className="font-medium mr-2">2.</span>
-                  <span>
-                    Scroll down and tap <strong>"Add to Home Screen"</strong>
-                  </span>
-                </li>
-                <li className="flex items-start">
-                  <span className="font-medium mr-2">3.</span>
-                  <span>
-                    Tap <strong>"Add"</strong> to confirm
-                  </span>
-                </li>
-              </ol>
-            </div>
-          ) : (
-            <div className="flex gap-3 mb-3">
-              <button
-                onClick={handleInstallClick}
-                className="flex-1 bg-teal-600 text-white px-3 py-2 rounded-lg font-medium hover:bg-teal-700 transition-colors flex items-center justify-center gap-2 text-sm"
-              >
-                <Download size={16} />
-                Install App
-              </button>
-            </div>
-          )}
-
-          <div className="flex gap-3">
-            <button
-              onClick={handleDismiss}
-              className="flex-1 border border-gray-300 text-gray-700 px-3 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors text-sm"
-            >
-              {isIOS ? "Got it!" : "Maybe Later"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 interface RestockList {
   id: string;
@@ -1343,6 +1194,11 @@ const [editForm, setEditForm] = useState({
             continue;
           }
           for (const product of list.products) {
+            // Ensure every product has a unique database_id
+            if (!product.database_id) {
+              product.database_id = generateUniqueDatabaseId();
+              console.log('Assigned new database_id to product:', product);
+            }
             // Upsert product if not in db
             let productId = dbIdToProductId[product.database_id];
             if (!productId) {
@@ -2201,7 +2057,6 @@ const [editForm, setEditForm] = useState({
       )}
 
       {/* PWA Install Prompt */}
-      <PWAInstaller />
 
       {/* Header */}
       <header className="app-header bg-white border-b border-gray-200">
